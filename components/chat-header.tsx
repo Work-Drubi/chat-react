@@ -28,7 +28,7 @@ export function ChatHeader() {
 		<header className="sticky top-0 z-10 border-b bg-background">
 			<div className="container flex h-16 items-center justify-between">
 				<div className="flex items-center gap-2">
-					<Image src="/el_salvador_bandera.svg?height=32&width=32" alt="Logo" width={32} height={32} className="rounded-full" />
+					<Image src="/el_salvador_bandera.svg?height=32&width=32" alt="Logo" width={32} height={32} />
 					<h1 className="text-xl font-bold text-primary">Chat El Salvador</h1>
 				</div>
 				<Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Cambiar tema">
