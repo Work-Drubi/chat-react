@@ -31,11 +31,11 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 240, 4%, 11%;
     --foreground: 210 40% 98%;
 
     /* Colores de El Salvador en modo oscuro */
-    --primary: 217 100% 33%; /* Azul de la bandera de El Salvador (#0038A8) */
+    --primary:205, 98%, 69%; /* Azul de la bandera de El Salvador (#0038A8) */
     --primary-foreground: 0 0% 100%; /* Blanco */
 
     --secondary: 217.2 32.6% 17.5%;
@@ -50,8 +50,8 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border:205, 98%, 69%;
+    --input: 205, 98%, 69%;
     --ring: 217 100% 33%;
   }
 }

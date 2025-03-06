@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,21 @@ import Image from "next/image";
 
 export function ChatHeader() {
 	const { theme, setTheme } = useTheme();
+	const [mounted, setMounted] = useState(false);
+
+	// Ensure the component is only rendered on the client side
+	useEffect(() => {
+		setMounted(true);
+		const initialThemeSet = localStorage.getItem("initialThemeSet");
+		if (!initialThemeSet) {
+			setTheme("light"); // Set the initial theme to light
+			localStorage.setItem("initialThemeSet", "true");
+		}
+	}, [setTheme]);
+
+	if (!mounted) {
+		return null;
+	}
 
 	return (
 		<header className="sticky top-0 z-10 border-b bg-background">
