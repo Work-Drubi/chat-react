@@ -43,6 +43,109 @@ export function Chat() {
 		}
 	}, [scrollToBottom, isChatMode]);
 
+	type RichContentOption = {
+		text: string;
+		mode?: string;
+	};
+
+	type RichContent = {
+		type: string;
+		options?: RichContentOption[];
+	};
+
+	type Message = {
+		id: string;
+		content: string;
+		role: "user" | "assistant";
+		timestamp: Date;
+		richContent?: RichContent[];
+	};
+	const handleChipClick = (text: string) => {
+		// Create a new user message with the selected option
+		const userMessage: Message = {
+			id: Date.now().toString(),
+			content: text,
+			role: "user",
+			timestamp: new Date(),
+		};
+
+		setMessages((prev) => [...prev, userMessage]);
+		setIsLoading(true);
+
+		// Send the chip text as a user message
+		fetch("/api/dialogflow", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				text: text,
+				project_id: "proyectos-3-451417",
+				location_id: "us-central1",
+				agent_id: "3d637c97-1656-4b8c-802e-47bf3555c1e1",
+				language_code: "es",
+				session_id: "10ssdd",
+			}),
+		})
+			.then((response) => {
+				if (!response.ok) throw new Error(`Error: ${response.status}`);
+				return response.json();
+			})
+			.then((data) => {
+				if (data.responses && Array.isArray(data.responses) && data.responses.length > 0) {
+					const assistantMessages = data.responses
+						.map((response, index) => {
+							if (response.payload?.richContent?.[0]) {
+								return {
+									id: (Date.now() + index + 1).toString(),
+									content: response.text || "",
+									role: "assistant" as const,
+									timestamp: new Date(Date.now() + index * 100),
+									richContent: response.payload.richContent[0],
+								};
+							}
+
+							if (response.text) {
+								return {
+									id: (Date.now() + index + 1).toString(),
+									content: response.text,
+									role: "assistant" as const,
+									timestamp: new Date(Date.now() + index * 100),
+								};
+							}
+
+							return null;
+						})
+						.filter(Boolean);
+
+					setMessages((prev) => [...prev, ...assistantMessages]);
+				} else {
+					const fallbackMessage: Message = {
+						id: (Date.now() + 1).toString(),
+						content: "Lo siento, no pude procesar tu solicitud.",
+						role: "assistant",
+						timestamp: new Date(),
+					};
+
+					setMessages((prev) => [...prev, fallbackMessage]);
+				}
+			})
+			.catch((error) => {
+				console.error("Error calling Dialogflow API:", error);
+
+				const errorMessage: Message = {
+					id: (Date.now() + 1).toString(),
+					content: "Lo siento, ocurrió un error al procesar tu mensaje.",
+					role: "assistant",
+					timestamp: new Date(),
+				};
+
+				setMessages((prev) => [...prev, errorMessage]);
+			})
+			.finally(() => {
+				setIsLoading(false);
+			});
+	};
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!input.trim()) return;
@@ -59,16 +162,87 @@ export function Chat() {
 		setInput("");
 		setIsLoading(true);
 
-		setTimeout(() => {
-			const assistantMessage: Message = {
+		try {
+			// Send message to Dialogflow API through our proxy
+			const response = await fetch("/api/dialogflow", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					text: input,
+					project_id: "proyectos-3-451417",
+					location_id: "us-central1",
+					agent_id: "3d637c97-1656-4b8c-802e-47bf3555c1e1",
+					language_code: "es",
+					session_id: "10ssdd",
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error(`Error: ${response.status}`);
+			}
+
+			const data = await response.json();
+
+			// Process each response as a separate message
+			if (data.responses && Array.isArray(data.responses) && data.responses.length > 0) {
+				// Create a new message for each response
+				const assistantMessages = data.responses
+					.map((response, index) => {
+						// For responses with rich content/chips
+						if (response.payload?.richContent?.[0]) {
+							return {
+								id: (Date.now() + index + 1).toString(),
+								content: response.text || "",
+								role: "assistant" as const,
+								timestamp: new Date(Date.now() + index * 100),
+								richContent: response.payload.richContent[0],
+							};
+						}
+
+						// For text-only responses
+						if (response.text) {
+							return {
+								id: (Date.now() + index + 1).toString(),
+								content: response.text,
+								role: "assistant" as const,
+								timestamp: new Date(Date.now() + index * 100),
+							};
+						}
+
+						return null;
+					})
+					.filter(Boolean);
+
+				// Add all assistant messages to the message list
+				setMessages((prev) => [...prev, ...assistantMessages]);
+			} else {
+				// Fallback message if no responses
+				const fallbackMessage: Message = {
+					id: (Date.now() + 1).toString(),
+					content: "Lo siento, no pude procesar tu solicitud.",
+					role: "assistant",
+					timestamp: new Date(),
+				};
+
+				setMessages((prev) => [...prev, fallbackMessage]);
+			}
+		} catch (error) {
+			console.error("Error calling Dialogflow API:", error);
+
+			// Add error message as assistant response
+			const errorMessage: Message = {
 				id: (Date.now() + 1).toString(),
-				content: `Gracias por tu mensaje. Estoy aquí para ayudarte con cualquier consulta sobre El Salvador o cualquier otro tema.`,
+				content: "Lo siento, ocurrió un error al procesar tu mensaje.",
 				role: "assistant",
 				timestamp: new Date(),
 			};
-			setMessages((prev) => [...prev, assistantMessage]);
+
+			setMessages((prev) => [...prev, errorMessage]);
+		} finally {
 			setIsLoading(false);
-		}, 1000);
+		}
 	};
 
 	if (!isChatMode) {
@@ -97,10 +271,10 @@ export function Chat() {
 	return (
 		<div className="flex flex-col  h-screen">
 			<ChatHeader />
-			<div className="flex flex-col h-screen w-full max-w-2xl mx-auto">
+			<div className="flex flex-col h-screen w-full max-w-4xl mx-auto">
 				<div className="flex-1 overflow-y-auto p-4 space-y-4">
 					{messages.map((message) => (
-						<ChatMessage key={message.id} message={message} />
+						<ChatMessage key={message.id} message={message} onChipClick={handleChipClick} />
 					))}
 					{isLoading && (
 						<div className="flex items-center space-x-2 text-muted-foreground">
